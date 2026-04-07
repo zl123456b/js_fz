@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>比赛分组设置</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        /* 全局样式重置与基础设置 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 动态背景装饰 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: moveBackground 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes moveBackground {
+            0% {
+                transform: translate(0, 0);
+            }
+            100% {
+                transform: translate(50px, 50px);
+            }
+        }
+
+        /* 表单容器卡片样式 */
+        .form-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 45px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+            width: 100%;
+            max-width: 550px;
+            position: relative;
+            z-index: 1;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-container h2 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 35px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            position: relative;
+            padding-bottom: 15px;
+        }
+
+        .form-container h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        /* 表单组样式 */
+        .form-group {
+            margin-bottom: 22px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 15px;
+            transition: color 0.3s ease;
+        }
+
+        .form-group:focus-within label {
+            color: #667eea;
+        }
+
+        /* 输入框样式 */
+        .form-control {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background-color: #f7fafc;
+            color: #2d3748;
+        }
+
+        .form-control:hover {
+            border-color: #cbd5e0;
+            background-color: #fff;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+            outline: none;
+            background-color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .form-control::placeholder {
+            color: #a0aec0;
+        }
+
+        /* 文件上传样式优化 */
+        .file-upload-wrapper {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            overflow: hidden;
+        }
+
+        .file-upload-wrapper::before {
+            content: '📁';
+            font-size: 40px;
+            position: absolute;
+            opacity: 0.3;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-wrapper:hover {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #ebf4ff 0%, #e6eeff 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .file-upload-wrapper:hover::before {
+            opacity: 0.5;
+            transform: scale(1.1);
+        }
+
+        .file-upload-wrapper.has-file {
+            border-color: #48bb78;
+            background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
+        }
+
+        .file-upload-wrapper input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .file-upload-text {
+            color: #718096;
+            font-size: 15px;
+            pointer-events: none;
+            z-index: 1;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-wrapper:hover .file-upload-text {
+            color: #667eea;
+        }
+
+        /* 提交按钮样式 */
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .submit-btn:disabled {
+            background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* 小字提示 */
+        .hint {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 8px;
+            padding-left: 5px;
+            font-style: italic;
+        }
+
+        /* 加载状态 */
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 25px;
+            color: #667eea;
+            font-weight: 600;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .loading::before {
+            content: '⏳ ';
+            font-size: 20px;
+        }
+
+        /* 成功消息 */
+        .success-message {
+            display: none;
+            text-align: center;
+            margin-top: 25px;
+            color: #48bb78;
+            font-weight: 700;
+            font-size: 16px;
+            animation: successPop 0.5s ease-out;
+        }
+
+        @keyframes successPop {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 600px) {
+            .form-container {
+                padding: 30px 25px;
+            }
+
+            .form-container h2 {
+                font-size: 24px;
+            }
+
+            .form-control {
+                padding: 12px 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="form-container">
+    <h2>比赛分组配置</h2>
+    <form id="groupForm" action="#" method="POST" enctype="multipart/form-data">
+
+        <!-- 1. 总赛台数量 -->
+        <div class="form-group">
+            <label for="totalStages">总赛台数量</label>
+            <input type="number" id="totalStages" name="totalStages" class="form-control" placeholder="请输入总赛台数"
+                   min="1" value="3" required>
+        </div>
+
+        <!-- 2. 1-3年级组赛台数量 -->
+        <div class="form-group">
+            <label for="lowGradeStages">1-3年级组赛台数量</label>
+            <input type="number" id="lowGradeStages" name="lowGradeStages" class="form-control"
+                   placeholder="请输入低年级组赛台数" min="1" value="2" required>
+            <div class="hint">注意：此数量不能超过总赛台数量</div>
+        </div>
+
+        <!-- 3. 每轮同时比赛数量 -->
+        <div class="form-group">
+            <label for="roundNumber">每轮同时比赛数量</label>
+            <input type="number" id="roundNumber" name="roundNumber" class="form-control"
+                   placeholder="请输入每轮同时比赛数量" min="1" value="5" required>
+        </div>
+
+        <!-- 4. 开始时间 -->
+        <div class="form-group">
+            <label for="startTime">开始时间</label>
+            <input type="time" id="startTime" name="startTime" class="form-control"
+                   value="08:00" required>
+        </div>
+
+        <!-- 5. 上传Excel文件 -->
+        <div class="form-group">
+            <label>上传总表单 (Excel)</label>
+            <div class="file-upload-wrapper" id="fileUploadWrapper">
+                <input type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls" required>
+                <span class="file-upload-text" id="fileText">点击或拖拽上传 Excel 文件</span>
+            </div>
+        </div>
+
+        <!-- 提交按钮 -->
+        <button type="submit" class="submit-btn" id="submitBtn">开始分组处理</button>
+
+        <!-- 加载状态 -->
+        <div class="loading" id="loading">
+            <p>正在处理中，请稍候...</p>
+        </div>
+
+        <!-- 成功消息 -->
+        <div class="success-message" id="successMessage">
+            <p>✓ 处理完成！文件已开始下载</p>
+        </div>
+    </form>
+</div>
+
+<script>
+    // 显示上传的文件名
+    document.getElementById('excelFile').addEventListener('change', function (e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : "点击或拖拽上传 Excel 文件";
+        const fileText = document.getElementById('fileText');
+        const fileWrapper = document.getElementById('fileUploadWrapper');
+
+        fileText.textContent = fileName;
+        fileText.style.color = "#48bb78";
+        fileText.style.fontWeight = "600";
+
+        if (e.target.files[0]) {
+            fileWrapper.classList.add('has-file');
+        } else {
+            fileWrapper.classList.remove('has-file');
+        }
+    });
+
+    // 表单提交处理
+    document.getElementById('groupForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const totalStages = parseInt(document.getElementById('totalStages').value);
+        const lowGradeStages = parseInt(document.getElementById('lowGradeStages').value);
+        const roundNumber = parseInt(document.getElementById('roundNumber').value);
+        const startTime = document.getElementById('startTime').value;
+        const fileInput = document.getElementById('excelFile');
+
+        // 验证
+        if (lowGradeStages > totalStages) {
+            alert("错误：1-3年级组赛台数量不能大于总赛台数量！");
+            return;
+        }
+
+        if (!fileInput.files[0]) {
+            alert("错误：请上传Excel文件！");
+            return;
+        }
+
+        // 显示加载状态
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('loading').classList.add('show');
+        document.getElementById('successMessage').classList.remove('show');
+
+        // 读取Excel文件
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+
+                // 读取第一个工作表
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+
+                // 转换为JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                console.log('读取的数据:', jsonData);
+
+                // 执行分组逻辑
+                const result = processGrouping(jsonData, totalStages, lowGradeStages, roundNumber, startTime);
+
+                // 生成Excel并下载
+                downloadExcel(result);
+
+                // 显示成功消息
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('successMessage').classList.add('show');
+                document.getElementById('submitBtn').disabled = false;
+
+            } catch (error) {
+                console.error('处理失败:', error);
+                alert('处理失败：' + error.message);
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        };
+
+        reader.readAsArrayBuffer(fileInput.files[0]);
+    });
+
+    // 计算时间段，确保中午12:10-13:20为休息时间
+    function calculateTimeSlot(c, currentStartTime) {
+        // 解析开始时间
+        const [startHour, startMinute] = currentStartTime.split(':').map(Number);
+
+        // 计算当前时间的小时和分钟
+        let currentTotalMinutes = (startHour + c) * 60 + startMinute;
+        let currentHour = Math.floor(currentTotalMinutes / 60);
+        let currentMin = currentTotalMinutes % 60;
+
+        // 结束时间（加1小时）
+        let endTotalMinutes = currentTotalMinutes + 60;
+        let endHour = Math.floor(endTotalMinutes / 60);
+        let endMin = endTotalMinutes % 60;
+
+        // 休息时间段：12:10-13:20（转换为分钟数）
+        const restStartMinutes = 12 * 60 + 10;  // 12:10
+        const restEndMinutes = 13 * 60 + 20;    // 13:20
+
+        // 检查是否与休息时间有重叠
+        const hasOverlap = !(endTotalMinutes <= restStartMinutes || currentTotalMinutes >= restEndMinutes);
+
+        if (hasOverlap) {
+            // 与休息时间冲突，跳到13:30之后
+            const newStartTime = "13:30";
+            c = 0;
+            currentTotalMinutes = 13 * 60 + 30;  // 13:30
+            currentHour = 13;
+            currentMin = 30;
+            endHour = 14;
+            endMin = 30;
+
+            return {
+                c: c,
+                startTime: newStartTime,
+                currentTime: `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`,
+                endTime: `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+            };
+        }
+
+        return {
+            c: c,
+            startTime: currentStartTime,
+            currentTime: `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`,
+            endTime: `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+        };
+    }
+
+    // 从数组中随机选择一个元素并移除（模拟 Python 的 random.choice + remove）
+    function randomChoiceAndRemove(array) {
+        if (array.length === 0) return null;
+        const randomIndex = Math.floor(Math.random() * array.length);
+        return array.splice(randomIndex, 1)[0];
+    }
+
+    // 分组处理逻辑
+    function processGrouping(data, totalStages, lowGradeStages, roundNumber, startTime) {
+        // 分离不同组别的数据
+        let grade1_3 = data.filter(item => item['组别'] === '1-3年级组');
+        let grade4_6 = data.filter(item => item['组别'] === '4-6年级组');
+        let middleSchool = data.filter(item => item['组别'] === '初中组');
+
+        console.log('1-3年级组人数:', grade1_3.length);
+        console.log('4-6年级组人数:', grade4_6.length);
+        console.log('初中组人数:', middleSchool.length);
+
+        const highGradeStages = totalStages - lowGradeStages;
+        const newData1 = [];
+        let c = 0;
+        let s = 1;
+        let currentStartTime = startTime;
+
+        // 处理1-3年级组
+        while (grade1_3.length > 1) {
+            for (let i = 0; i < (roundNumber * lowGradeStages); i++) {
+                if (grade1_3.length < 1) {
+                    break;
+                }
+
+                const r = randomChoiceAndRemove(grade1_3);
+                r['组号'] = `A${s}`;
+
+                // 计算时间段
+                const timeResult = calculateTimeSlot(c, currentStartTime);
+                c = timeResult.c;
+                currentStartTime = timeResult.startTime;
+
+                r['比赛时间'] = `${timeResult.currentTime}-${timeResult.endTime}`;
+
+                newData1.push(r);
+                s++;
+            }
+            c++;
+            console.log("+++++++");
+        }
+
+        console.log("==========================");
+
+        // 添加组号 - 4-6年级组
+        s = 1;
+        const n2Data1 = [];
+        while (grade4_6.length > 0) {
+            const r = randomChoiceAndRemove(grade4_6);
+            r['组号'] = `B${s}`;
+            n2Data1.push(r);
+            s++;
+        }
+
+        // 添加组号 - 初中组
+        s = 1;
+        const n3Data1 = [];
+        while (middleSchool.length > 0) {
+            const r = randomChoiceAndRemove(middleSchool);
+            r['组号'] = `C${s}`;
+            n3Data1.push(r);
+            s++;
+        }
+
+        let allData = [...n2Data1, ...n3Data1];
+
+        console.log("==========================");
+
+        // 处理4-6年级组和初中组
+        const newData2 = [];
+        c = 0;
+        s = 1;
+        currentStartTime = startTime;
+
+        while (allData.length > 1) {
+            for (let i = 0; i < (roundNumber * highGradeStages); i++) {
+                if (allData.length < 1) {
+                    break;
+                }
+
+                const r = randomChoiceAndRemove(allData);
+
+                // 计算时间段
+                const timeResult = calculateTimeSlot(c, currentStartTime);
+                c = timeResult.c;
+                currentStartTime = timeResult.startTime;
+
+                r['比赛时间'] = `${timeResult.currentTime}-${timeResult.endTime}`;
+
+                newData2.push(r);
+                s++;
+            }
+            c++;
+            console.log("+++++++");
+        }
+
+        console.log(newData2);
+        console.log("==========================");
+
+        for (let i of newData1) {
+            console.log(i);
+        }
+        console.log("#############################");
+        for (let i of newData2) {
+            console.log(i);
+        }
+
+        // 合并所有数据
+        allData = [...newData1, ...newData2];
+
+        // 按组号和比赛时间排序
+        allData.sort((a, b) => {
+            if (a['组号'] < b['组号']) return -1;
+            if (a['组号'] > b['组号']) return 1;
+            return 0;
+        });
+
+        allData.sort((a, b) => {
+            if (a['比赛时间'] < b['比赛时间']) return -1;
+            if (a['比赛时间'] > b['比赛时间']) return 1;
+            return 0;
+        });
+
+        console.log('处理完成，总记录数:', allData.length);
+        return allData;
+    }
+
+    // 格式化时间范围
+    function formatTimeRange(startTime, hourOffset) {
+        const [hours, minutes] = startTime.split(':').map(Number);
+
+        const startHour = hours + hourOffset;
+        const endHour = startHour + 1;
+
+        const startStr = `${String(startHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        const endStr = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+        return `${startStr}-${endStr}`;
+    }
+
+    // 下载Excel文件
+    function downloadExcel(data) {
+        // 创建工作簿
+        const wb = XLSX.utils.book_new();
+
+        // 将数据转换为工作表
+        const ws = XLSX.utils.json_to_sheet(data);
+
+        // 设置列宽
+        const colWidths = [];
+        if (data.length > 0) {
+            const keys = Object.keys(data[0]);
+            keys.forEach(key => {
+                colWidths.push({wch: 20});
+            });
+        }
+        ws['!cols'] = colWidths;
+
+        // 添加工作表到工作簿
+        XLSX.utils.book_append_sheet(wb, ws, "分组结果");
+
+        // 生成文件名
+        const timestamp = new Date().toISOString().slice(0, 10);
+        const fileName = `比赛分组_${timestamp}.xlsx`;
+
+        // 下载文件
+        XLSX.writeFile(wb, fileName);
+    }
+</script>
+
+</body>
+
+</html>
