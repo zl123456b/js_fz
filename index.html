@@ -359,26 +359,25 @@
     <h2>比赛分组配置</h2>
     <form id="groupForm" action="#" method="POST" enctype="multipart/form-data">
 
-        <!-- 1. 总赛台数量 -->
+        <!-- 1. 1-3年级组赛台数量 -->
         <div class="form-group">
-            <label for="totalStages">总赛台数量</label>
-            <input type="number" id="totalStages" name="totalStages" class="form-control" placeholder="请输入总赛台数"
-                   min="1" value="3" required>
+            <label for="grade1_3Stages">1-3年级组赛台数量</label>
+            <input type="number" id="grade1_3Stages" name="grade1_3Stages" class="form-control"
+                   placeholder="请输入1-3年级组赛台数" min="1" value="10" required>
         </div>
 
-        <!-- 2. 1-3年级组赛台数量 -->
+        <!-- 2. 4-6年级组赛台数量 -->
         <div class="form-group">
-            <label for="lowGradeStages">1-3年级组赛台数量</label>
-            <input type="number" id="lowGradeStages" name="lowGradeStages" class="form-control"
-                   placeholder="请输入低年级组赛台数" min="1" value="2" required>
-            <div class="hint">注意：此数量不能超过总赛台数量</div>
+            <label for="grade4_6Stages">4-6年级组赛台数量</label>
+            <input type="number" id="grade4_6Stages" name="grade4_6Stages" class="form-control"
+                   placeholder="请输入4-6年级组赛台数" min="1" value="5" required>
         </div>
 
-        <!-- 3. 每轮同时比赛数量 -->
+        <!-- 3. 初中组赛台数量 -->
         <div class="form-group">
-            <label for="roundNumber">每轮同时比赛数量</label>
-            <input type="number" id="roundNumber" name="roundNumber" class="form-control"
-                   placeholder="请输入每轮同时比赛数量" min="1" value="5" required>
+            <label for="middleStages">初中组赛台数量</label>
+            <input type="number" id="middleStages" name="middleStages" class="form-control"
+                   placeholder="请输入初中组赛台数" min="1" value="5" required>
         </div>
 
         <!-- 4. 开始时间 -->
@@ -413,6 +412,9 @@
 </div>
 
 <script>
+    // 常量定义：每轮同时比赛数量
+    const ROUND_NUMBER = 5;
+
     // 显示上传的文件名
     document.getElementById('excelFile').addEventListener('change', function (e) {
         const fileName = e.target.files[0] ? e.target.files[0].name : "点击或拖拽上传 Excel 文件";
@@ -434,18 +436,13 @@
     document.getElementById('groupForm').addEventListener('submit', function (e) {
         e.preventDefault();
 
-        const totalStages = parseInt(document.getElementById('totalStages').value);
-        const lowGradeStages = parseInt(document.getElementById('lowGradeStages').value);
-        const roundNumber = parseInt(document.getElementById('roundNumber').value);
-        const startTime = document.getElementById('startTime').value;
+        const grade1_3Stages = parseInt(document.getElementById('grade1_3Stages').value);
+        const grade4_6Stages = parseInt(document.getElementById('grade4_6Stages').value);
+        const middleStages = parseInt(document.getElementById('middleStages').value);
+        const startTime = document.getElementById('startTime').value + ":00";
         const fileInput = document.getElementById('excelFile');
 
         // 验证
-        if (lowGradeStages > totalStages) {
-            alert("错误：1-3年级组赛台数量不能大于总赛台数量！");
-            return;
-        }
-
         if (!fileInput.files[0]) {
             alert("错误：请上传Excel文件！");
             return;
@@ -473,7 +470,7 @@
                 console.log('读取的数据:', jsonData);
 
                 // 执行分组逻辑
-                const result = processGrouping(jsonData, totalStages, lowGradeStages, roundNumber, startTime);
+                const result = processGrouping(jsonData, grade1_3Stages, grade4_6Stages, middleStages, startTime);
 
                 // 生成Excel并下载
                 downloadExcel(result);
@@ -496,50 +493,53 @@
 
     // 计算时间段，确保中午12:10-13:20为休息时间
     function calculateTimeSlot(c, currentStartTime) {
-        // 解析开始时间
-        const [startHour, startMinute] = currentStartTime.split(':').map(Number);
+        const [startHour, startMinute, startSecond] = currentStartTime.split(':').map(Number);
 
-        // 计算当前时间的小时和分钟
-        let currentTotalMinutes = (startHour + c) * 60 + startMinute;
-        let currentHour = Math.floor(currentTotalMinutes / 60);
-        let currentMin = currentTotalMinutes % 60;
+        let currentTime = new Date();
+        currentTime.setHours(startHour, startMinute, startSecond || 0, 0);
+        currentTime.setHours(currentTime.getHours() + c);
 
-        // 结束时间（加1小时）
-        let endTotalMinutes = currentTotalMinutes + 60;
-        let endHour = Math.floor(endTotalMinutes / 60);
-        let endMin = endTotalMinutes % 60;
+        let endTime = new Date(currentTime.getTime());
+        endTime.setHours(endTime.getHours() + 1);
 
-        // 休息时间段：12:10-13:20（转换为分钟数）
-        const restStartMinutes = 12 * 60 + 10;  // 12:10
-        const restEndMinutes = 13 * 60 + 20;    // 13:20
+        const currentTotalMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+        const endTotalMinutes = endTime.getHours() * 60 + endTime.getMinutes();
 
-        // 检查是否与休息时间有重叠
+        const restStartMinutes = 12 * 60 + 10;
+        const restEndMinutes = 13 * 60 + 20;
+
         const hasOverlap = !(endTotalMinutes <= restStartMinutes || currentTotalMinutes >= restEndMinutes);
 
         if (hasOverlap) {
-            // 与休息时间冲突，跳到13:30之后
-            const newStartTime = "13:30";
+            const newStartTime = "13:30:00";
             c = 0;
-            currentTotalMinutes = 13 * 60 + 30;  // 13:30
-            currentHour = 13;
-            currentMin = 30;
-            endHour = 14;
-            endMin = 30;
+            currentTime = new Date();
+            currentTime.setHours(13, 30, 0, 0);
+            currentTime.setHours(currentTime.getHours() + c);
+            endTime = new Date(currentTime.getTime());
+            endTime.setHours(endTime.getHours() + 1);
 
             return {
                 c: c,
                 startTime: newStartTime,
-                currentTime: `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`,
-                endTime: `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+                currentTime: currentTime,
+                endTime: endTime
             };
         }
 
         return {
             c: c,
             startTime: currentStartTime,
-            currentTime: `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`,
-            endTime: `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+            currentTime: currentTime,
+            endTime: endTime
         };
+    }
+
+    // 格式化时间为 HH:MM 格式
+    function formatTime(date) {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
     }
 
     // 从数组中随机选择一个元素并移除（模拟 Python 的 random.choice + remove）
@@ -550,113 +550,151 @@
     }
 
     // 分组处理逻辑
-    function processGrouping(data, totalStages, lowGradeStages, roundNumber, startTime) {
-        // 分离不同组别的数据
-        let grade1_3 = data.filter(item => item['组别'] === '1-3年级组');
-        let grade4_6 = data.filter(item => item['组别'] === '4-6年级组');
-        let middleSchool = data.filter(item => item['组别'] === '初中组');
+    function processGrouping(data, grade1_3Stages, grade4_6Stages, middleStages, startTime) {
+        const totalStages = grade1_3Stages + grade4_6Stages + middleStages;
+
+        const grade1_3 = data.filter(item => item['组别'] === '1-3年级组');
+        const grade4_6 = data.filter(item => item['组别'] === '4-6年级组');
+        const middleSchool = data.filter(item => item['组别'] === '初中组');
 
         console.log('1-3年级组人数:', grade1_3.length);
         console.log('4-6年级组人数:', grade4_6.length);
         console.log('初中组人数:', middleSchool.length);
 
-        const highGradeStages = totalStages - lowGradeStages;
-        const newData1 = [];
-        let c = 0;
+        // 处理1-3年级组
         let s = 1;
         let currentStartTime = startTime;
+        const all1Data = [];
 
-        // 处理1-3年级组
-        while (grade1_3.length > 1) {
-            for (let i = 0; i < (roundNumber * lowGradeStages); i++) {
-                if (grade1_3.length < 1) {
-                    break;
+        console.log("抽取1-3年级组随机组数");
+        while (grade1_3.length > 0) {
+            const r = randomChoiceAndRemove(grade1_3);
+            r['组号'] = `A${String(s).padStart(3, '0')}`;
+            all1Data.push(r);
+            s++;
+        }
+        console.log("抽取1-3年级组完毕");
+        console.log("==========================");
+
+        console.log("分配1-3年级组时间");
+        let c = 0;
+        const all1DataNew = [];
+
+        while (all1Data.length > 0) {
+            for (let a = 1; a <= grade1_3Stages; a++) {
+                if (all1Data.length < 1) break;
+
+                console.log(`分配赛台：${a}号赛台`);
+
+                for (let i = 0; i < ROUND_NUMBER; i++) {
+                    if (all1Data.length < 1) break;
+
+                    const r = all1Data.shift();
+                    const timeResult = calculateTimeSlot(c, currentStartTime);
+                    c = timeResult.c;
+                    currentStartTime = timeResult.startTime;
+
+                    r['比赛时间'] = `${formatTime(timeResult.currentTime)}-${formatTime(timeResult.endTime)}`;
+                    r['赛台'] = `${a}号赛台`;
+                    console.log(r);
+                    all1DataNew.push(r);
                 }
-
-                const r = randomChoiceAndRemove(grade1_3);
-                r['组号'] = `A${s}`;
-
-                // 计算时间段
-                const timeResult = calculateTimeSlot(c, currentStartTime);
-                c = timeResult.c;
-                currentStartTime = timeResult.startTime;
-
-                r['比赛时间'] = `${timeResult.currentTime}-${timeResult.endTime}`;
-
-                newData1.push(r);
-                s++;
             }
             c++;
-            console.log("+++++++");
         }
-
+        console.log("分配1-3年级组时间完毕");
         console.log("==========================");
 
-        // 添加组号 - 4-6年级组
-        s = 1;
-        const n2Data1 = [];
-        while (grade4_6.length > 0) {
-            const r = randomChoiceAndRemove(grade4_6);
-            r['组号'] = `B${s}`;
-            n2Data1.push(r);
-            s++;
-        }
-
-        // 添加组号 - 初中组
-        s = 1;
-        const n3Data1 = [];
-        while (middleSchool.length > 0) {
-            const r = randomChoiceAndRemove(middleSchool);
-            r['组号'] = `C${s}`;
-            n3Data1.push(r);
-            s++;
-        }
-
-        let allData = [...n2Data1, ...n3Data1];
-
-        console.log("==========================");
-
-        // 处理4-6年级组和初中组
-        const newData2 = [];
-        c = 0;
+        // 处理4-6年级组
+        const all2Data = [];
         s = 1;
         currentStartTime = startTime;
-
-        while (allData.length > 1) {
-            for (let i = 0; i < (roundNumber * highGradeStages); i++) {
-                if (allData.length < 1) {
-                    break;
-                }
-
-                const r = randomChoiceAndRemove(allData);
-
-                // 计算时间段
-                const timeResult = calculateTimeSlot(c, currentStartTime);
-                c = timeResult.c;
-                currentStartTime = timeResult.startTime;
-
-                r['比赛时间'] = `${timeResult.currentTime}-${timeResult.endTime}`;
-
-                newData2.push(r);
-                s++;
-            }
-            c++;
-            console.log("+++++++");
+        console.log("抽取4-6年级组随机组数");
+        while (grade4_6.length > 0) {
+            const r = randomChoiceAndRemove(grade4_6);
+            r['组号'] = `B${String(s).padStart(3, '0')}`;
+            all2Data.push(r);
+            s++;
         }
-
-        console.log(newData2);
+        console.log("抽取4-6年级组完毕");
+        console.log(`4-6年级组待分配人数: ${all2Data.length}`);
         console.log("==========================");
 
-        for (let i of newData1) {
-            console.log(i);
+        console.log("分配4-6年级组时间");
+        c = 0;
+        const all2DataNew = [];
+
+        while (all2Data.length > 0) {
+            for (let a = grade1_3Stages + 1; a <= grade1_3Stages + grade4_6Stages; a++) {
+                if (all2Data.length < 1) break;
+
+                console.log(`分配赛台：${a}号赛台`);
+
+                for (let i = 0; i < ROUND_NUMBER; i++) {
+                    if (all2Data.length < 1) break;
+
+                    const r = all2Data.shift();
+                    const timeResult = calculateTimeSlot(c, currentStartTime);
+                    c = timeResult.c;
+                    currentStartTime = timeResult.startTime;
+
+                    r['比赛时间'] = `${formatTime(timeResult.currentTime)}-${formatTime(timeResult.endTime)}`;
+                    r['赛台'] = `${a}号赛台`;
+                    console.log(r);
+                    all2DataNew.push(r);
+                }
+            }
+            c++;
         }
-        console.log("#############################");
-        for (let i of newData2) {
-            console.log(i);
+        console.log("分配4-6年级组时间完毕");
+        console.log("==========================");
+
+        // 处理初中组
+        const all3Data = [];
+        s = 1;
+        currentStartTime = startTime;
+        console.log("抽取初中组随机组数");
+        while (middleSchool.length > 0) {
+            const r = randomChoiceAndRemove(middleSchool);
+            r['组号'] = `C${String(s).padStart(3, '0')}`;
+            all3Data.push(r);
+            s++;
         }
+        console.log("抽取初中组完毕");
+        console.log(`初中组待分配人数: ${all3Data.length}`);
+        console.log("==========================");
+
+        console.log("分配初中组时间");
+        c = 0;
+        const all3DataNew = [];
+
+        while (all3Data.length > 0) {
+            for (let a = grade1_3Stages + grade4_6Stages + 1; a <= totalStages; a++) {
+                if (all3Data.length < 1) break;
+
+                console.log(`分配赛台：${a}号赛台`);
+
+                for (let i = 0; i < ROUND_NUMBER; i++) {
+                    if (all3Data.length < 1) break;
+
+                    const r = all3Data.shift();
+                    const timeResult = calculateTimeSlot(c, currentStartTime);
+                    c = timeResult.c;
+                    currentStartTime = timeResult.startTime;
+
+                    r['比赛时间'] = `${formatTime(timeResult.currentTime)}-${formatTime(timeResult.endTime)}`;
+                    r['赛台'] = `${a}号赛台`;
+                    console.log(r);
+                    all3DataNew.push(r);
+                }
+            }
+            c++;
+        }
+        console.log("分配初中组时间完毕");
+        console.log("==========================");
 
         // 合并所有数据
-        allData = [...newData1, ...newData2];
+        let allData = [...all1DataNew, ...all2DataNew, ...all3DataNew];
 
         // 按组号和比赛时间排序
         allData.sort((a, b) => {
@@ -673,19 +711,6 @@
 
         console.log('处理完成，总记录数:', allData.length);
         return allData;
-    }
-
-    // 格式化时间范围
-    function formatTimeRange(startTime, hourOffset) {
-        const [hours, minutes] = startTime.split(':').map(Number);
-
-        const startHour = hours + hourOffset;
-        const endHour = startHour + 1;
-
-        const startStr = `${String(startHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        const endStr = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-
-        return `${startStr}-${endStr}`;
     }
 
     // 下载Excel文件
