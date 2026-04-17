@@ -380,14 +380,21 @@
                    placeholder="请输入初中组赛台数" min="1" value="5" required>
         </div>
 
-        <!-- 4. 开始时间 -->
+        <!-- 4. 每轮组数 -->
+        <div class="form-group">
+            <label for="group_number">每轮组数</label>
+            <input type="number" id="group_number" name="group_number" class="form-control"
+                   placeholder="每轮组数" min="3" value="4" max="6" required>
+        </div>
+
+        <!-- 5. 开始时间 -->
         <div class="form-group">
             <label for="startTime">开始时间</label>
             <input type="time" id="startTime" name="startTime" class="form-control"
                    value="08:00" required>
         </div>
 
-        <!-- 5. 上传Excel文件 -->
+        <!-- 6. 上传Excel文件 -->
         <div class="form-group">
             <label>上传总表单 (Excel)</label>
             <div class="file-upload-wrapper" id="fileUploadWrapper">
@@ -413,7 +420,8 @@
 
 <script>
     // 常量定义：每轮同时比赛数量
-    const ROUND_NUMBER = 5;
+    //const ROUND_NUMBER = parseInt(document.getElementById('group_number').value);
+
 
     // 显示上传的文件名
     document.getElementById('excelFile').addEventListener('change', function (e) {
@@ -439,12 +447,18 @@
         const grade1_3Stages = parseInt(document.getElementById('grade1_3Stages').value);
         const grade4_6Stages = parseInt(document.getElementById('grade4_6Stages').value);
         const middleStages = parseInt(document.getElementById('middleStages').value);
+        const ROUND_NUMBER = parseInt(document.getElementById('group_number').value);
         const startTime = document.getElementById('startTime').value + ":00";
         const fileInput = document.getElementById('excelFile');
 
         // 验证
         if (!fileInput.files[0]) {
             alert("错误：请上传Excel文件！");
+            return;
+        }
+
+        if (isNaN(ROUND_NUMBER) || ROUND_NUMBER < 1) {
+            alert("错误：每轮组数必须为大于0的整数！");
             return;
         }
 
@@ -470,7 +484,7 @@
                 console.log('读取的数据:', jsonData);
 
                 // 执行分组逻辑
-                const result = processGrouping(jsonData, grade1_3Stages, grade4_6Stages, middleStages, startTime);
+                const result = processGrouping(jsonData, grade1_3Stages, grade4_6Stages, middleStages, ROUND_NUMBER, startTime);
 
                 // 生成Excel并下载
                 downloadExcel(result);
@@ -550,7 +564,7 @@
     }
 
     // 分组处理逻辑
-    function processGrouping(data, grade1_3Stages, grade4_6Stages, middleStages, startTime) {
+    function processGrouping(data, grade1_3Stages, grade4_6Stages, middleStages, ROUND_NUMBER, startTime) {
         const totalStages = grade1_3Stages + grade4_6Stages + middleStages;
 
         const grade1_3 = data.filter(item => item['组别'] === '1-3年级组');
